@@ -1,5 +1,5 @@
 {
-  description = "Personal NUR for Proton-CachyOS";
+  description = "Nix flake packaging Proton-CachyOS for Steam";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -24,24 +24,17 @@
 
     in
     {
-      packages.${pkgs.stdenv.hostPlatform.system} = {
+      packages.x86_64-linux = {
         proton-cachyos = proton;
-
         proton-cachyos-x86_64-v3 = protonv3;
-        # Deprecated aliases (w/ underscores) for backwards compatibility
-        proton-cachyos-x86_64_v3 = protonv3;
-
         default = proton;
       };
 
-      overlays.default = final: prev: {
-        proton-cachyos = self.packages.${final.stdenv.hostPlatform.system}.proton-cachyos;
-        proton-cachyos-x86_64-v3 =
-          self.packages.${final.stdenv.hostPlatform.system}.proton-cachyos-x86_64-v3;
-
-        # Deprecated aliases w/ underscores
-        proton-cachyos-x86_64_v3 =
-          self.packages.${final.stdenv.hostPlatform.system}.proton-cachyos-x86_64-v3;
-      };
+      overlays.default =
+        final: prev:
+        pkgs.lib.optionalAttrs (final.stdenv.hostPlatform.system == "x86_64-linux") {
+          proton-cachyos = self.packages.x86_64-linux.proton-cachyos;
+          proton-cachyos-x86_64-v3 = self.packages.x86_64-linux.proton-cachyos-x86_64-v3;
+        };
     };
 }

@@ -6,19 +6,28 @@
 }:
 
 let
-  # Used to set folder name of tool
+  lib = pkgs.lib;
+
   folderName = if variant == "base" then "proton-cachyos" else "proton-cachyos-${variant}";
-  # Used to set display name of tool in Steam
   steamName = if variant == "base" then "Proton CachyOS" else "Proton CachyOS ${variant}";
+  version = lib.removePrefix "cachyos-" source.version;
+
+  unpackedSrc = pkgs.runCommand "${folderName}-unpacked-${version}" { } ''
+    mkdir -p $out
+    tar -xf ${source.src} -C $out --strip-components=1
+  '';
 
 in
-pkgs.stdenv.mkDerivation {
+pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
   pname = folderName;
-  version = pkgs.lib.removePrefix "cachyos-" source.version;
+  inherit version;
 
-  inherit (source) src;
+  src = unpackedSrc;
 
-  nativeBuildInputs = [ pkgs.xz ];
+  dontUnpack = true;
+  dontConfigure = true;
+  dontBuild = true;
+
   outputs = [
     "out"
     "steamcompattool"
@@ -27,31 +36,34 @@ pkgs.stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
 
-    # Create the steamcompat directory
-    mkdir -p $steamcompattool
-    cp -r ./* $steamcompattool/
+    echo "${finalAttrs.pname} should not be installed into environments. Please use programs.steam.extraCompatPackages instead." > $out
 
-    # Modify the display name
-    sed -i -r "s|\"display_name\".*|\"display_name\" \"${steamName}\"|" \
-      $steamcompattool/compatibilitytool.vdf
-
-    ${pkgs.lib.optionalString renameInternalName ''
-      sed -i -r 's|"proton-cachyos-[^"]*"(\s*// Internal name)|"${steamName}"\1|' $steamcompattool/compatibilitytool.vdf
-    ''}
-
-    # Create a real folder so that Steam doesn't require reselecting compatibility tool on update
-    mkdir -p $out/share/steam/compatibilitytools.d/${folderName}
-
-    # Symlink the files INSIDE, not the folder itself
-    ln -s $steamcompattool/* $out/share/steam/compatibilitytools.d/${folderName}/
+    mkdir $steamcompattool
+    ln -s $src/* $steamcompattool
+    rm $steamcompattool/compatibilitytool.vdf
+    cp $src/compatibilitytool.vdf $steamcompattool
 
     runHook postInstall
   '';
 
-  meta = with pkgs.lib; {
-    description = "${steamName}";
+  preFixup = ''
+    sed -i -r 's|"display_name".*|"display_name" "${steamName}"|' \
+      "$steamcompattool/compatibilitytool.vdf"
+    ${lib.optionalString renameInternalName ''
+      sed -i -r 's|"proton-cachyos-[^"]*"(\s*// Internal name)|"${steamName}"\1|' \
+        "$steamcompattool/compatibilitytool.vdf"
+    ''}
+  '';
+
+  meta = with lib; {
+    description = ''
+      Compatibility tool for Steam Play based on Wine and additional components.
+
+      (This is intended for use in the `programs.steam.extraCompatPackages` option only.)
+    '';
     homepage = "https://github.com/CachyOS/proton-cachyos";
     license = licenses.bsd3;
     platforms = [ "x86_64-linux" ];
+    sourceProvenance = [ sourceTypes.binaryNativeCode ];
   };
-}
+})

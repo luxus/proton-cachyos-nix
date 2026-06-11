@@ -1,20 +1,44 @@
-# This repo will continue to be maintained as it does not have a large overhead, but I have stood up a (currently, slightly) larger NUR that includes the proton-cachyos packages as well as a module for Nix installation of mesa-git (cached!), and packages for vintage-story, pokemmo, and whatever else I decide to update. I recommend using that!
+# proton-cachyos-nix
 
+Nix flake packaging [CachyOS/proton-cachyos](https://github.com/CachyOS/proton-cachyos) release tarballs as Steam compatibility tools.
 
+This is a maintained fork of [powerofthe69/proton-cachyos-nix](https://github.com/powerofthe69/proton-cachyos-nix), kept up to date automatically via GitHub Actions.
 
+## Usage
 
-Personal flake for Proton-CachyOS
+Add the flake as an input:
 
-This is made for personal use, but I've made the repo public for anyone that may not want to maintain their own. My original intent was to only grab the x86-64 v4 microarchitecture of proton-cachyos, but I added all the different microarchitectures too, as it wasn't much more work than what was already established, and I know that others may not have an x86-64 v4 supported CPU, or may prefer the regular package.
+```nix
+inputs.proton-cachyos.url = "github:luxus/proton-cachyos-nix";
+```
 
-I could stop maintaining this for myself at any point.
+Then either use the overlay or reference packages directly:
 
-Enable this repo in your flake.nix inputs using `proton-cachyos.url = "github:powerofthe69/proton-cachyos-nix";`.
+```nix
+nixpkgs.overlays = [ proton-cachyos.overlays.default ];
+```
 
-Enable the overlay using `nixpkgs.overlays = [ proton-cachyos.overlays.default ];`.
+```nix
+programs.steam.extraCompatPackages = with pkgs; [
+  proton-cachyos-x86_64-v3
+];
+```
 
-All packages maintain the same structure for installation, that being:
+## Variants
 
-`programs.steam.extraCompatPackages = with pkgs; [ proton-cachyos ];`
+| Package | Description |
+| --- | --- |
+| `proton-cachyos` | Standard x86-64 build |
+| `proton-cachyos-x86_64-v3` | x86-64-v3 microarchitecture build |
 
-`programs.steam.extraCompatPackages = with pkgs; [ proton-cachyos-x86_64_v3 ];`
+All packages are **x86_64-linux only**. Upstream no longer ships an x86-64-v4 tarball. An arm64 tarball is available upstream but is not packaged here.
+
+Packages are intended for `programs.steam.extraCompatPackages` only — do not install them into a regular Nix environment.
+
+## Updates
+
+A daily GitHub Action runs [nvfetcher](https://github.com/nix-community/nvfetcher) to bump Proton-CachyOS sources when new releases are published. The nixpkgs input in `flake.lock` is updated weekly.
+
+## License
+
+BSD-3-Clause (same as upstream Proton-CachyOS).
