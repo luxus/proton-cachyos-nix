@@ -4,11 +4,10 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 5 * * *" # daily: bump proton-cachyos sources
-    - cron: "0 6 * * 0" # weekly: bump flake.lock and keep workflows alive
+    - cron: "0 6 * * 0" # weekly: bump flake.lock + keepalive commit
 
 permissions:
   contents: write
-  actions: write
 
 jobs:
   update-sources:
@@ -72,7 +71,12 @@ jobs:
           commit_message: "chore(deps): update flake.lock"
           file_pattern: "flake.lock"
 
-      - name: Keep scheduled workflows enabled
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow enable update.yml
+      - name: Keep workflow schedule alive
+        run: |
+          echo "Last keepalive: $(date -u +%Y-%m-%dT%H:%M:%SZ)" > .github/keepalive
+
+      - name: Commit keepalive
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(ci): keepalive"
+          file_pattern: ".github/keepalive"
